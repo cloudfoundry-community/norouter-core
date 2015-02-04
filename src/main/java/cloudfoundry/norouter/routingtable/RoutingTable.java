@@ -1,15 +1,16 @@
 package cloudfoundry.norouter.routingtable;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -31,28 +32,43 @@ public class RoutingTable implements AutoCloseable {
 	// Access to #routeTable must be synchronized on #lock.
 	private final Map<String, Map<SocketAddress, Route>> routeTable = new HashMap<>();
 	private final Object lock = new Object();
+	private final List<RouteProvider> routeProviders;
 
-	@Autowired
-	public RoutingTable(ApplicationEventPublisher eventPublisher, ScheduledExecutorService scheduler, Duration staleRouteTimeout) {
+	public RoutingTable(ApplicationEventPublisher eventPublisher, Duration staleRouteTimeout, RouteProvider... routeProviders) {
+		this(eventPublisher, null, staleRouteTimeout, routeProviders);
+	}
+
+	public RoutingTable(ApplicationEventPublisher eventPublisher, ScheduledExecutorService scheduler, Duration staleRouteTimeout, RouteProvider... routeProviders) {
 		this.eventPublisher = eventPublisher;
 		this.staleRouteTimeout = staleRouteTimeout;
+		this.routeProviders = Arrays.asList(routeProviders);
 
-		staleRouteScheduleFuture = scheduler.scheduleAtFixedRate(
+		staleRouteScheduleFuture =
+			(scheduler == null ) ? null : scheduler.scheduleAtFixedRate(
 				this::cleanupStaleRoutes,
 				staleRouteTimeout.toMillis(),
 				staleRouteTimeout.toMillis(),
 				TimeUnit.MILLISECONDS
-		);
+			);
 	}
 
 	@Override
 	public void close() {
-		staleRouteScheduleFuture.cancel(true);
+		if (staleRouteScheduleFuture != null) {
+			staleRouteScheduleFuture.cancel(true);
+		}
 	}
 
-	// TODO Should only run if all the route providers are available
-	protected void cleanupStaleRoutes() {
+	protected int cleanupStaleRoutes() {
+		boolean available = true;
+		for (RouteProvider provider : routeProviders) {
+			available &= provider.isAvailable();
+		}
+		if (!available) {
+			return 0;
+		}
 		final Instant now = Instant.now();
+		int count = 0;
 		synchronized (lock) {
 			final Iterator<Map.Entry<String, Map<SocketAddress, Route>>> routeTableIterator = routeTable.entrySet().iterator();
 			while (routeTableIterator.hasNext()) {
@@ -63,6 +79,7 @@ public class RoutingTable implements AutoCloseable {
 					final Map.Entry<SocketAddress, Route> routeEntry = routeMapIterator.next();
 					final Duration staleTime = Duration.between(routeEntry.getValue().lasteUpdated, now);
 					if (staleTime.compareTo(staleRouteTimeout) > 0) {
+						count++;
 						publishRouteUnregister(routeEntry.getValue());
 						routeMapIterator.remove();
 					}
@@ -72,6 +89,7 @@ public class RoutingTable implements AutoCloseable {
 				}
 			}
 		}
+		return count;
 	}
 
 	public void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, String privateInstanceId) {

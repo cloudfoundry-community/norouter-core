@@ -127,14 +127,19 @@ public class RoutingTableTest {
 
 	@Test
 	public void unregisterRoutesAfterTimeout() throws Exception {
+		final Duration staleRouteTimeout = Duration.ofMillis(100);
+		routingTable = new RoutingTable(eventPublisher, staleRouteTimeout);
 		registerDefaultRoute();
+
+		// Make sure routes don't get cleaned up until they've expired
+		assertEquals(routingTable.cleanupStaleRoutes(), 0);
 
 		// Clear out route register event
 		final RouteRegisterEvent registerEvent = (RouteRegisterEvent) eventPublisher.poll();
 		assertDefaultRoute(registerEvent);
 
-		Thread.sleep(STALE_ROUTE_TIMEOUT.toMillis() * 2);
-		routingTable.cleanupStaleRoutes();
+		Thread.sleep(staleRouteTimeout.toMillis() + 10);
+		assertEquals(1, routingTable.cleanupStaleRoutes());
 
 		// Ensure routes is empty
 		final Set<RouteDetails> routes = routingTable.getRoutes(HOST);
@@ -143,6 +148,22 @@ public class RoutingTableTest {
 		// Ensure we have unregister event
 		final RouteUnregisterEvent unregisterEvent = (RouteUnregisterEvent) eventPublisher.poll();
 		assertDefaultRoute(unregisterEvent);
+	}
+
+	@Test
+	public void doNotUnregisterRoutesWhileProviderDown() throws Exception {
+		boolean[] available = { false };
+		final Duration staleRouteTimeout = Duration.ofMillis(10);
+		routingTable = new RoutingTable(eventPublisher, staleRouteTimeout, () -> available[0]);
+		registerDefaultRoute();
+
+		Thread.sleep(staleRouteTimeout.toMillis() + 10);
+		assertEquals(0, routingTable.cleanupStaleRoutes());
+
+		// With provider available, stale route is cleaned up
+		available[0] = true;
+		assertEquals(1, routingTable.cleanupStaleRoutes());
+
 	}
 
 	private void registerDefaultRoute() {
