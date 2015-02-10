@@ -1,5 +1,6 @@
 package cloudfoundry.norouter.routingtable;
 
+import cloudfoundry.norouter.RouteProvider;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.net.InetSocketAddress;
@@ -22,7 +23,8 @@ import java.util.concurrent.TimeUnit;
  * @author Mike Heath <elcapo@gmail.com>
  */
 // TODO Create an ApplicationEventPublisher class that is backed by a thread pool
-public class RoutingTable implements AutoCloseable {
+// TODO Add unregisterRoute method
+public class RoutingTable implements AutoCloseable, RouteRegistrar {
 
 	private final ApplicationEventPublisher eventPublisher;
 
@@ -92,8 +94,9 @@ public class RoutingTable implements AutoCloseable {
 		return count;
 	}
 
-	public void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, String privateInstanceId) {
-		final Route newRoute = new Route(address, applicationGuid, host, privateInstanceId);
+	@Override
+	public void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId) {
+		final Route newRoute = new Route(address, applicationGuid, applicationIndex, host, privateInstanceId);
 		synchronized (lock) {
 			Map<SocketAddress, Route> routes = routeTable.get(host);
 			if (routes == null) {
@@ -135,13 +138,15 @@ public class RoutingTable implements AutoCloseable {
 	private class Route implements RouteDetails {
 		private final InetSocketAddress address;
 		private final UUID applicationGuid;
+		private final Integer applicationIndex;
 		private final String host;
 		private final String privateInstanceId;
 		private volatile Instant lasteUpdated;
 
-		private Route(InetSocketAddress address, UUID applicationGuid, String host, String privateInstanceId) {
+		private Route(InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String host, String privateInstanceId) {
 			this.address = address;
 			this.applicationGuid = applicationGuid;
+			this.applicationIndex = applicationIndex;
 			this.host = host;
 			this.privateInstanceId = privateInstanceId;
 			touch();
@@ -155,6 +160,10 @@ public class RoutingTable implements AutoCloseable {
 		@Override
 		public UUID getApplicationGuid() {
 			return applicationGuid;
+		}
+
+		public Integer getApplicationIndex() {
+			return applicationIndex;
 		}
 
 		@Override

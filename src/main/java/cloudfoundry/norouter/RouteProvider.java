@@ -1,4 +1,4 @@
-package cloudfoundry.norouter.routingtable;
+package cloudfoundry.norouter;
 
 /**
  * @author Mike Heath <elcapo@gmail.com>

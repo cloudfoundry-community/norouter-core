@@ -12,6 +12,8 @@ public interface RouteDetails {
 
 	UUID getApplicationGuid();
 
+	Integer getApplicationIndex();
+
 	String getHost();
 
 	String getPrivateInstanceId();

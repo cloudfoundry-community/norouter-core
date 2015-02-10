@@ -31,6 +31,7 @@ public class RoutingTableTest {
 	private static final String HOST = "foo.lds.org";
 	private static final InetSocketAddress ADDRESS = InetSocketAddress.createUnresolved("1.2.3.4", 1234);
 	private static final UUID APPLICATION_GUID = UUID.randomUUID();
+	private static final Integer APPLICATION_INDEX = 2;
 	private static final String PRIVATE_INSTANCE_ID = "thisIsPrivate";
 
 	private ApplicationEventQueue eventPublisher;
@@ -69,7 +70,7 @@ public class RoutingTableTest {
 
 		// Register second route
 		final InetSocketAddress secondAddress = InetSocketAddress.createUnresolved("foo.lds.org", 54321);
-		routingTable.registerRoute(HOST, secondAddress, null, null);
+		routingTable.registerRoute(HOST, secondAddress, null, null, null);
 		routes = routingTable.getRoutes(HOST);
 		assertEquals(routes.size(), 2);
 		assertTrue(routes.remove(defaultRoute));
@@ -101,7 +102,7 @@ public class RoutingTableTest {
 	@Test
 	public void emitRouteRegisterEventOnPrivateInstanceChange() {
 		registerDefaultRoute();
-		routingTable.registerRoute(HOST, ADDRESS, APPLICATION_GUID, null);
+		routingTable.registerRoute(HOST, ADDRESS, APPLICATION_GUID, APPLICATION_INDEX, null);
 
 		final RouteRegisterEvent applicationEvent = (RouteRegisterEvent) eventPublisher.poll();
 		assertDefaultRoute(applicationEvent);
@@ -115,7 +116,7 @@ public class RoutingTableTest {
 	public void emitRouteRegisterEventOnAppGuidChange() {
 		final UUID newAppGuid = UUID.randomUUID();
 		registerDefaultRoute();
-		routingTable.registerRoute(HOST, ADDRESS, newAppGuid, PRIVATE_INSTANCE_ID);
+		routingTable.registerRoute(HOST, ADDRESS, newAppGuid, APPLICATION_INDEX, PRIVATE_INSTANCE_ID);
 
 		final RouteRegisterEvent applicationEvent = (RouteRegisterEvent) eventPublisher.poll();
 		assertDefaultRoute(applicationEvent);
@@ -167,13 +168,14 @@ public class RoutingTableTest {
 	}
 
 	private void registerDefaultRoute() {
-		routingTable.registerRoute(HOST, ADDRESS, APPLICATION_GUID, PRIVATE_INSTANCE_ID);
+		routingTable.registerRoute(HOST, ADDRESS, APPLICATION_GUID, APPLICATION_INDEX, PRIVATE_INSTANCE_ID);
 	}
 
 	private void assertDefaultRoute(RouteDetails applicationEvent) {
 		assertNotNull(applicationEvent);
 		assertEquals(applicationEvent.getAddress(), ADDRESS);
 		assertEquals(applicationEvent.getApplicationGuid(), APPLICATION_GUID);
+		assertEquals(applicationEvent.getApplicationIndex(), APPLICATION_INDEX);
 		assertEquals(applicationEvent.getHost(), HOST);
 		assertEquals(applicationEvent.getPrivateInstanceId(), PRIVATE_INSTANCE_ID);
 	}

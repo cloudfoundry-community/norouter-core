@@ -9,10 +9,10 @@ import java.util.UUID;
 public class RouteUnregisterEvent extends AbstractRouteEvent {
 
 	public static RouteUnregisterEvent fromRouteDetails(Object source, RouteDetails route) {
-		return new RouteUnregisterEvent(source, route.getAddress(), route.getApplicationGuid(), route.getHost(), route.getPrivateInstanceId());
+		return new RouteUnregisterEvent(source, route.getHost(), route.getAddress(), route.getApplicationGuid(), route.getApplicationIndex(), route.getPrivateInstanceId());
 	}
 
-	public RouteUnregisterEvent(Object source, InetSocketAddress address, UUID applicationGuid, String host, String privateInstanceId) {
-		super(source, address, applicationGuid, host, privateInstanceId);
+	public RouteUnregisterEvent(Object source, String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId) {
+		super(source, host, address, applicationGuid, applicationIndex, privateInstanceId);
 	}
 }
