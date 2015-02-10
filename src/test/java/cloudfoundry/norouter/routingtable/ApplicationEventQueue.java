@@ -27,7 +27,7 @@ import java.util.Queue;
  */
 public class ApplicationEventQueue implements ApplicationEventPublisher {
 
-	private final Queue<ApplicationEvent> queue = new LinkedList<ApplicationEvent>();
+	private final Queue<ApplicationEvent> queue = new LinkedList<>();
 
 	@Override
 	public void publishEvent(ApplicationEvent event) {
