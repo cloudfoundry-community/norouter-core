@@ -20,7 +20,7 @@ import java.net.InetSocketAddress;
 import java.util.UUID;
 
 /**
- * @author Mike Heath <elcapo@gmail.com>
+ * @author Mike Heath
  */
 public class RouteRegisterEvent extends AbstractRouteEvent {
 

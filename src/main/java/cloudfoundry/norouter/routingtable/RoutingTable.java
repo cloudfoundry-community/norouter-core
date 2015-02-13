@@ -36,7 +36,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author Mike Heath <elcapo@gmail.com>
+ * @author Mike Heath
  */
 // TODO Create an ApplicationEventPublisher class that is backed by a thread pool
 // TODO Add unregisterRoute method
