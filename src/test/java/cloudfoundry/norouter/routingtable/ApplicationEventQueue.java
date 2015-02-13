@@ -23,7 +23,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 /**
- * @author Mike Heath <elcapo@gmail.com>
+ * @author Mike Heath
  */
 public class ApplicationEventQueue implements ApplicationEventPublisher {
 
