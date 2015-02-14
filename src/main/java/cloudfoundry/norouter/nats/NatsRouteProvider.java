@@ -140,10 +140,7 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 		nats.publish(routerStartMessage);
 		routerGreetSubscription = nats.subscribe(RouterGreet.class, (message) -> message.reply(routerStartMessage));
 
-		pingSubscription = nats.subscribe(PingMessage.class, (message) -> {
-			System.out.println("blah");
-			lastPingReceipt = Instant.now();
-		});
+		pingSubscription = nats.subscribe(PingMessage.class, (message) -> lastPingReceipt = Instant.now());
 		pingRegistration = nats.publish(new PingMessage(), natsPingInterval.toMillis(), TimeUnit.MILLISECONDS);
 
 		started = true;
