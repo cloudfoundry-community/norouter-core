@@ -25,4 +25,6 @@ public interface RouteRegistrar {
 
 	void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId);
 
+	boolean unregisterRoute(String host, InetSocketAddress address);
+
 }

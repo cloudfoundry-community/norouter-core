@@ -22,11 +22,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -37,8 +35,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Mike Heath
  */
-// TODO Create an ApplicationEventPublisher class that is backed by a thread pool
-// TODO Add unregisterRoute method
 public class RoutingTable implements AutoCloseable, RouteRegistrar {
 
 	private final ApplicationEventPublisher eventPublisher;
@@ -49,16 +45,16 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	// Access to #routeTable must be synchronized on #lock.
 	private final Map<String, Map<SocketAddress, Route>> routeTable = new HashMap<>();
 	private final Object lock = new Object();
-	private final List<RouteProvider> routeProviders;
+	private final RouteProvider routeProvider;
 
-	public RoutingTable(ApplicationEventPublisher eventPublisher, Duration staleRouteTimeout, RouteProvider... routeProviders) {
-		this(eventPublisher, null, staleRouteTimeout, routeProviders);
+	public RoutingTable(ApplicationEventPublisher eventPublisher, Duration staleRouteTimeout, RouteProvider routeProvider) {
+		this(eventPublisher, null, staleRouteTimeout, routeProvider);
 	}
 
-	public RoutingTable(ApplicationEventPublisher eventPublisher, ScheduledExecutorService scheduler, Duration staleRouteTimeout, RouteProvider... routeProviders) {
+	public RoutingTable(ApplicationEventPublisher eventPublisher, ScheduledExecutorService scheduler, Duration staleRouteTimeout, RouteProvider routeProvider) {
 		this.eventPublisher = eventPublisher;
 		this.staleRouteTimeout = staleRouteTimeout;
-		this.routeProviders = Arrays.asList(routeProviders);
+		this.routeProvider = routeProvider;
 
 		staleRouteScheduleFuture =
 			(scheduler == null ) ? null : scheduler.scheduleAtFixedRate(
@@ -77,12 +73,8 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	}
 
 	protected int cleanupStaleRoutes() {
-		boolean available = true;
-		for (RouteProvider provider : routeProviders) {
-			available &= provider.isAvailable();
-		}
-		if (!available) {
-			return 0;
+		if (!routeProvider.isAvailable()) {
+			return -1;
 		}
 		final Instant now = Instant.now();
 		int count = 0;
@@ -128,6 +120,25 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 			} else {
 				route.touch();
 			}
+		}
+	}
+
+	@Override
+	public boolean unregisterRoute(String host, InetSocketAddress address) {
+		synchronized (lock) {
+			Map<SocketAddress, Route> routes = routeTable.get(host);
+			if (routes == null) {
+				return false;
+			}
+			final Route route = routes.remove(address);
+			final boolean removed = route != null;
+			if (removed) {
+				publishRouteUnregister(route);
+			}
+			if (routes.size() == 0) {
+				routeTable.remove(host);
+			}
+			return removed;
 		}
 	}
 

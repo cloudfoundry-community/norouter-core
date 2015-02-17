@@ -65,7 +65,7 @@ public class RoutingTableTest {
 	@BeforeMethod
 	public void setup() {
 		eventPublisher = new ApplicationEventQueue();
-		routingTable = new RoutingTable(eventPublisher, scheduler, STALE_ROUTE_TIMEOUT);
+		routingTable = new RoutingTable(eventPublisher, scheduler, STALE_ROUTE_TIMEOUT, () -> true);
 	}
 
 	@AfterMethod
@@ -100,6 +100,18 @@ public class RoutingTableTest {
 
 		final RouteRegisterEvent applicationEvent = (RouteRegisterEvent) eventPublisher.poll();
 		assertDefaultRoute(applicationEvent);
+	}
+
+	@Test
+	public void emitRouteUnregisterOnUnregister() {
+		registerDefaultRoute();
+
+		final RouteRegisterEvent routeRegisterEvent = (RouteRegisterEvent) eventPublisher.poll();
+		assertDefaultRoute(routeRegisterEvent);
+
+		assertTrue(routingTable.unregisterRoute(HOST, ADDRESS));
+		final RouteUnregisterEvent routeUnregisterEvent = (RouteUnregisterEvent) eventPublisher.poll();
+		assertDefaultRoute(routeUnregisterEvent);
 	}
 
 	@Test
@@ -144,7 +156,7 @@ public class RoutingTableTest {
 	@Test
 	public void unregisterRoutesAfterTimeout() throws Exception {
 		final Duration staleRouteTimeout = Duration.ofMillis(100);
-		routingTable = new RoutingTable(eventPublisher, staleRouteTimeout);
+		routingTable = new RoutingTable(eventPublisher, staleRouteTimeout, () -> true);
 		registerDefaultRoute();
 
 		// Make sure routes don't get cleaned up until they've expired
@@ -174,7 +186,7 @@ public class RoutingTableTest {
 		registerDefaultRoute();
 
 		Thread.sleep(staleRouteTimeout.toMillis() + 10);
-		assertEquals(0, routingTable.cleanupStaleRoutes());
+		assertTrue(routingTable.cleanupStaleRoutes() < 0);
 
 		// With provider available, stale route is cleaned up
 		available[0] = true;

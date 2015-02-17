@@ -21,10 +21,13 @@ import cf.nats.NatsSubject;
 import cf.nats.message.RouterGreet;
 import cf.nats.message.RouterRegister;
 import cf.nats.message.RouterStart;
+import cf.nats.message.RouterUnregister;
 import cloudfoundry.norouter.RouteProvider;
 import cloudfoundry.norouter.routingtable.RouteRegistrar;
 import nats.client.Registration;
 import nats.client.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -40,6 +43,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(NatsRouteProvider.class);
+
 	private final CfNats nats;
 	private final Duration natsPingInterval;
 
@@ -47,10 +52,16 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 
 	private Subscription routerGreetSubscription;
 
+	private Registration pingRegistration;
 	private Subscription pingSubscription;
 	private volatile Instant lastPingReceipt;
+
 	private RouterStart routerStartMessage;
-	private Registration pingRegistration;
+
+	private Subscription routeRegisterSubscription;
+	private Subscription routeUnregisterSubscription;
+
+	private final RouteRegistrar registrar;
 
 	public static Builder create() {
 		return new Builder();
@@ -100,7 +111,7 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 			return this;
 		}
 
-		NatsRouteProvider build() {
+		public NatsRouteProvider build() {
 			return new NatsRouteProvider(this);
 		}
 
@@ -108,24 +119,11 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 
 	private NatsRouteProvider(Builder builder) {
 		Objects.requireNonNull(builder.registrar, "routeRegistrar is a required argument");
-		final RouteRegistrar registrar = builder.registrar;
+		registrar = builder.registrar;
 
 		Objects.requireNonNull(builder.nats, "nats is a required argument");
 		nats = builder.nats;
 		natsPingInterval = (builder.natsPingInterval == null) ? builder.registerInterval : builder.natsPingInterval;
-
-		nats.subscribe(RouterRegister.class, publication -> {
-			final RouterRegister routerRegister = publication.getMessageBody();
-			routerRegister.getUris().forEach(uri -> {
-				final InetSocketAddress address = InetSocketAddress.createUnresolved(routerRegister.getHost(), routerRegister.getPort());
-				registrar.registerRoute(
-						uri,
-						address,
-						routerRegister.getApp() == null ? null : UUID.fromString(routerRegister.getApp()),
-						routerRegister.getIndex(),
-						routerRegister.getPrivateInstanceId());
-			});
-		});
 
 		// TODO Version field isn't used anymore, remove from cf-nats
 		// TODO Refactor RouterStart to accept a Duration instance
@@ -143,7 +141,29 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 		pingSubscription = nats.subscribe(PingMessage.class, (message) -> lastPingReceipt = Instant.now());
 		pingRegistration = nats.publish(new PingMessage(), natsPingInterval.toMillis(), TimeUnit.MILLISECONDS);
 
+		routeRegisterSubscription = nats.subscribe(RouterRegister.class, publication -> {
+			final RouterRegister routerRegister = publication.getMessageBody();
+			routerRegister.getUris().forEach(uri -> {
+				final InetSocketAddress address = InetSocketAddress.createUnresolved(routerRegister.getHost(), routerRegister.getPort());
+				registrar.registerRoute(
+						uri,
+						address,
+						routerRegister.getApp() == null ? null : UUID.fromString(routerRegister.getApp()),
+						routerRegister.getIndex(),
+						routerRegister.getPrivateInstanceId());
+			});
+		});
+
+		routeUnregisterSubscription = nats.subscribe(RouterUnregister.class, publication -> {
+			final RouterUnregister routerUnregister = publication.getMessageBody();
+			routerUnregister.getUris().forEach(uri -> {
+				final InetSocketAddress address = InetSocketAddress.createUnresolved(routerUnregister.getHost(), routerUnregister.getPort());
+				registrar.unregisterRoute(uri, address);
+			});
+		});
+
 		started = true;
+		LOGGER.info("Listening for route updates over NATS");
 	}
 
 	public void close() {
@@ -155,6 +175,12 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 		}
 		if (routerGreetSubscription != null) {
 			routerGreetSubscription.close();
+		}
+		if (routeRegisterSubscription != null) {
+			routeRegisterSubscription.close();
+		}
+		if (routeUnregisterSubscription != null) {
+			routeUnregisterSubscription.close();
 		}
 	}
 

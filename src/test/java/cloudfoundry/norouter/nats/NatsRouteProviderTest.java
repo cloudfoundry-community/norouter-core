@@ -117,6 +117,7 @@ public class NatsRouteProviderTest {
 				.nats(nats)
 				.routeRegistrar(routeRegistrar)
 				.build()) {
+			natsRouteProvider.start();
 			nats.publish(new RouterRegister(host, port, uri1, uri2));
 		}
 
