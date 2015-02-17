@@ -40,6 +40,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextStartedEvent;
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -73,7 +74,7 @@ public class Main {
 		return new NettyEventLoopGroupFactoryBean();
 	}
 
-	@Bean
+	@Bean @Order(Integer.MIN_VALUE)
 	ThreadPoolTaskExecutor natsExecutor() {
 		final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		executor.setMaxPoolSize(1);
