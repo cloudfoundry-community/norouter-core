@@ -102,7 +102,16 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	}
 
 	@Override
+	public void insertRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId) {
+		addRoute(host, address, applicationGuid, applicationIndex, privateInstanceId, false);
+	}
+
+	@Override
 	public void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId) {
+		addRoute(host, address, applicationGuid, applicationIndex, privateInstanceId, true).touch();
+	}
+
+	private Route addRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId, boolean publishChange) {
 		final Route newRoute = new Route(address, applicationGuid, applicationIndex, host, privateInstanceId);
 		synchronized (lock) {
 			Map<SocketAddress, Route> routes = routeTable.get(host);
@@ -111,15 +120,14 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 				routeTable.put(host, routes);
 			}
 			final Route route = routes.get(address);
-			if (route == null) {
+			if (route == null || !newRoute.equals(route)) {
 				routes.put(address, newRoute);
-				publishRouteRegister(newRoute);
-			} else if (!newRoute.equals(route)) {
-				publishRouteRegister(newRoute);
-				routes.put(address, newRoute);
-			} else {
-				route.touch();
+				if (publishChange) {
+					publishRouteRegister(newRoute);
+				}
+				return newRoute;
 			}
+			return route;
 		}
 	}
 

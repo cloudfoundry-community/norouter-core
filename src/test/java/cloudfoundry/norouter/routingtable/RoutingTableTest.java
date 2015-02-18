@@ -95,6 +95,15 @@ public class RoutingTableTest {
 	}
 
 	@Test
+	public void insertedRoutesDontGenerateEvents() {
+		routingTable.insertRoute(HOST, ADDRESS, APPLICATION_GUID, APPLICATION_INDEX, PRIVATE_INSTANCE_ID);
+		final Set<RouteDetails> routes = routingTable.getRoutes(HOST);
+		assertDefaultRoute(routes.stream().findFirst().get());
+
+		assertNull(eventPublisher.poll());
+	}
+
+	@Test
 	public void emitRouteRegisterEventOnRegisterNewRoute() {
 		registerDefaultRoute();
 

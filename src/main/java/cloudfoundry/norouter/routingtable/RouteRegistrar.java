@@ -23,6 +23,8 @@ import java.util.UUID;
  */
 public interface RouteRegistrar {
 
+	void insertRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId);
+
 	void registerRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId);
 
 	boolean unregisterRoute(String host, InetSocketAddress address);
