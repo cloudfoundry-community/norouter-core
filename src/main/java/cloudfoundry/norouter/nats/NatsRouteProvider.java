@@ -135,9 +135,6 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 	}
 
 	public void start() {
-		nats.publish(routerStartMessage);
-		routerGreetSubscription = nats.subscribe(RouterGreet.class, (message) -> message.reply(routerStartMessage));
-
 		pingSubscription = nats.subscribe(PingMessage.class, (message) -> lastPingReceipt = Instant.now());
 		pingRegistration = nats.publish(new PingMessage(), natsPingInterval.toMillis(), TimeUnit.MILLISECONDS);
 
@@ -161,6 +158,9 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 				registrar.unregisterRoute(uri, address);
 			});
 		});
+
+		nats.publish(routerStartMessage);
+		routerGreetSubscription = nats.subscribe(RouterGreet.class, (message) -> message.reply(routerStartMessage));
 
 		started = true;
 		LOGGER.info("Listening for route updates over NATS");
