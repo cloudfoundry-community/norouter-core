@@ -15,6 +15,7 @@
  */
 package cloudfoundry.norouter.nats;
 
+import cf.common.JsonObject;
 import cf.nats.CfNats;
 import cf.nats.MessageBody;
 import cf.nats.NatsSubject;
@@ -72,7 +73,7 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 		private List<String> hosts = new ArrayList<>();
 		private CfNats nats;
 		private Duration natsPingInterval = null;
-		private Duration registerInterval = Duration.ofSeconds(5);
+		private Duration registerInterval = Duration.ofSeconds(30);
 		private UUID routerId = UUID.randomUUID();
 		private RouteRegistrar registrar;
 
@@ -198,7 +199,7 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 	}
 
 	@NatsSubject("norouter.ping")
-	private static class PingMessage implements MessageBody<Void> {
+	private static class PingMessage extends JsonObject implements MessageBody<Void> {
 		public PingMessage() {
 			// Provide public default constructor to enable instantiation by CfNats.
 		}

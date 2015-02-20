@@ -141,7 +141,7 @@ public class Main {
 		return new RoutingTable(
 				publisher,
 				staleRouteEvictionScheduledExecutor().getObject(),
-				Duration.ofSeconds(30), // TODO Make the stale route duration configurable
+				Duration.ofMinutes(5), // TODO Make the stale route duration configurable
 				compositeRouteProvider());
 	}
 
