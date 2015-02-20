@@ -27,8 +27,14 @@ import cloudfoundry.norouter.RouteProvider;
 import cloudfoundry.norouter.routingtable.RouteRegistrar;
 import nats.client.Registration;
 import nats.client.Subscription;
+import nats.client.spring.NatsServerReadyApplicationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.Ordered;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -42,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Mike Heath
  */
-public class NatsRouteProvider implements AutoCloseable, RouteProvider {
+public class NatsRouteProvider implements AutoCloseable, RouteProvider, ApplicationListener<ApplicationEvent>, Ordered {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(NatsRouteProvider.class);
 
@@ -160,7 +166,6 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 			});
 		});
 
-		nats.publish(routerStartMessage);
 		routerGreetSubscription = nats.subscribe(RouterGreet.class, (message) -> message.reply(routerStartMessage));
 
 		started = true;
@@ -183,6 +188,20 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider {
 		if (routeUnregisterSubscription != null) {
 			routeUnregisterSubscription.close();
 		}
+	}
+
+	@Override
+	public void onApplicationEvent(ApplicationEvent event) {
+		if (event instanceof ContextRefreshedEvent) {
+			start();
+		} else if (event instanceof NatsServerReadyApplicationEvent) {
+			nats.publish(routerStartMessage);
+		}
+	}
+
+	@Override
+	public int getOrder() {
+		return 0;
 	}
 
 	@Override

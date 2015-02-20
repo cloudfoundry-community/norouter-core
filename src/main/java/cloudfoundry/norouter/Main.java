@@ -33,19 +33,22 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.event.ContextStartedEvent;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.time.Duration;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 /**
  * @author Mike Heath
@@ -82,11 +85,16 @@ public class Main {
 	}
 
 	@Bean
+	QueuedEventPublisher queuedEventPublisher(ApplicationEventPublisher publisher) {
+		return new QueuedEventPublisher(publisher);
+	}
+
+	@Bean
 	Nats nats(
-			ApplicationEventPublisher publisher,
+			QueuedEventPublisher eventPublisher,
 			EventLoopGroup workerGroup,
 			@Value("${nats.machines}") String[] natsMachines) {
-		final NatsConnector natsConnector = new NatsBuilder(publisher)
+		final NatsConnector natsConnector = new NatsBuilder(eventPublisher)
 				.eventLoopGroup(workerGroup)
 				.calllbackExecutor(natsExecutor());
 		for (String natsMachine : natsMachines) {
@@ -145,32 +153,41 @@ public class Main {
 				compositeRouteProvider());
 	}
 
-	@Bean
-	NatsProviderStarter natsProviderStarter() {
-		return new NatsProviderStarter();
-	}
+	static class QueuedEventPublisher implements ApplicationEventPublisher, ApplicationListener<ContextRefreshedEvent>, Ordered {
 
-	/**
-	 * It would be ideal if NatsRouteProvider itself listened for ContextStartedEvent. However, if
-	 * the NATS client connects while the NatsRouteProvider is initializing (likely), it will cause a deadlock.
-	 */
-	static class NatsProviderStarter implements ApplicationListener<ContextStartedEvent>, Ordered {
+		private final ApplicationEventPublisher publisher;
+		private final Queue<ApplicationEvent> events = new LinkedList<>();
+		private boolean started = false;
 
-		@Autowired
-		NatsRouteProvider provider;
+		QueuedEventPublisher(ApplicationEventPublisher publisher) {
+			this.publisher = publisher;
+		}
 
 		@Override
-		public void onApplicationEvent(ContextStartedEvent event) {
-			provider.start();
+		public synchronized void publishEvent(ApplicationEvent event) {
+			if (started) {
+				publisher.publishEvent(event);
+			} else {
+				events.add(event);
+			}
+		}
+
+		@Override
+		public synchronized void onApplicationEvent(ContextRefreshedEvent event) {
+			if (!started) {
+				started = true;
+				events.forEach(this::publishEvent);
+			}
 		}
 
 		@Override
 		public int getOrder() {
-			return 0;
+			return Integer.MAX_VALUE;
 		}
 	}
 
 	public static void main(String[] args) {
-		new SpringApplicationBuilder().sources(Main.class).build().run(args).start();
+		new SpringApplicationBuilder().sources(Main.class).build().run(args);
 	}
+
 }
