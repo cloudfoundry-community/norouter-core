@@ -31,7 +31,6 @@ import nats.client.spring.NatsServerReadyApplicationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
@@ -168,6 +167,7 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider, Applicat
 
 		routerGreetSubscription = nats.subscribe(RouterGreet.class, (message) -> message.reply(routerStartMessage));
 
+		nats.publish(routerStartMessage);
 		started = true;
 		LOGGER.info("Listening for route updates over NATS");
 	}
@@ -195,7 +195,9 @@ public class NatsRouteProvider implements AutoCloseable, RouteProvider, Applicat
 		if (event instanceof ContextRefreshedEvent) {
 			start();
 		} else if (event instanceof NatsServerReadyApplicationEvent) {
-			nats.publish(routerStartMessage);
+			if (isStarted()) {
+				nats.publish(routerStartMessage);
+			}
 		}
 	}
 
