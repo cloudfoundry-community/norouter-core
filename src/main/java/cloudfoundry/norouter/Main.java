@@ -19,6 +19,7 @@ package cloudfoundry.norouter;
 import cf.nats.CfNats;
 import cf.nats.DefaultCfNats;
 import cf.spring.NettyEventLoopGroupFactoryBean;
+import cf.spring.PidFileFactory;
 import cloudfoundry.norouter.nats.NatsRouteProvider;
 import cloudfoundry.norouter.routingtable.LoggingRouteRegisterEventListener;
 import cloudfoundry.norouter.routingtable.LoggingRouteUnregisterEventListener;
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,6 +47,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.Map;
@@ -82,6 +85,12 @@ public class Main {
 		final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		executor.setMaxPoolSize(1);
 		return executor;
+	}
+
+	@Bean
+	@ConditionalOnProperty("pidfile")
+	PidFileFactory pidFile(@Value("${pidfile}") String pidfile) throws IOException {
+		return new PidFileFactory(pidfile);
 	}
 
 	@Bean
