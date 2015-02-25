@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
@@ -59,10 +60,14 @@ import java.util.Queue;
 @Configuration
 @EnableAutoConfiguration
 @ComponentScan("cloudfoundry.norouter.config")
+@EnableConfigurationProperties(NatsProperties.class)
 public class Main {
 
 	@Autowired
 	private ListableBeanFactory beanFactory;
+
+	@Autowired
+	private NatsProperties natsProperties;
 
 	@Bean
 	LoggingRouteRegisterEventListener logRouteRegisterEvents() {
@@ -101,14 +106,11 @@ public class Main {
 	@Bean
 	Nats nats(
 			QueuedEventPublisher eventPublisher,
-			EventLoopGroup workerGroup,
-			@Value("${nats.machines}") String[] natsMachines) {
+			EventLoopGroup workerGroup) {
 		final NatsConnector natsConnector = new NatsBuilder(eventPublisher)
 				.eventLoopGroup(workerGroup)
 				.calllbackExecutor(natsExecutor());
-		for (String natsMachine : natsMachines) {
-			natsConnector.addHost(natsMachine);
-		}
+		natsProperties.getMachines().forEach(natsConnector::addHost);
 		return natsConnector.connect();
 	}
 
