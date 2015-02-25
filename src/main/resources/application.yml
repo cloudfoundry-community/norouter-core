@@ -1,3 +1,0 @@
-nats:
-  machines:
-    nats://nats:password@10.118.216.220
