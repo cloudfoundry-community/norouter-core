@@ -57,12 +57,12 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 		this.routeProvider = routeProvider;
 
 		staleRouteScheduleFuture =
-			(scheduler == null ) ? null : scheduler.scheduleAtFixedRate(
-				this::cleanupStaleRoutes,
-				staleRouteTimeout.toMillis(),
-				staleRouteTimeout.toMillis(),
-				TimeUnit.MILLISECONDS
-			);
+				(scheduler == null) ? null : scheduler.scheduleAtFixedRate(
+						this::cleanupStaleRoutes,
+						staleRouteTimeout.toMillis(),
+						staleRouteTimeout.toMillis(),
+						TimeUnit.MILLISECONDS
+				);
 	}
 
 	@Override
@@ -89,7 +89,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 					final Duration staleTime = Duration.between(routeEntry.getValue().lasteUpdated, now);
 					if (staleTime.compareTo(staleRouteTimeout) > 0) {
 						count++;
-						publishRouteUnregister(routeEntry.getValue());
+						publishRouteUnregister(routeEntry.getValue(), routeMap.isEmpty());
 						routeMapIterator.remove();
 					}
 				}
@@ -140,11 +140,12 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 			}
 			final Route route = routes.remove(address);
 			final boolean removed = route != null;
-			if (removed) {
-				publishRouteUnregister(route);
-			}
-			if (routes.size() == 0) {
+			final boolean last = routes.size() == 0;
+			if (last) {
 				routeTable.remove(host);
+			}
+			if (removed) {
+				publishRouteUnregister(route, last);
 			}
 			return removed;
 		}
@@ -154,8 +155,8 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 		eventPublisher.publishEvent(RouteRegisterEvent.fromRouteDetails(this, route));
 	}
 
-	private void publishRouteUnregister(Route route) {
-		eventPublisher.publishEvent(RouteUnregisterEvent.fromRouteDetails(this, route));
+	private void publishRouteUnregister(Route route, boolean last) {
+		eventPublisher.publishEvent(RouteUnregisterEvent.fromRouteDetails(this, route, last));
 	}
 
 	public Set<RouteDetails> getRoutes(String host) {
@@ -221,13 +222,10 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 
 			Route route = (Route) o;
 
-			if (!address.equals(route.address)) return false;
-			if (applicationGuid != null ? !applicationGuid.equals(route.applicationGuid) : route.applicationGuid != null)
-				return false;
-			if (privateInstanceId != null ? !privateInstanceId.equals(route.privateInstanceId) : route.privateInstanceId != null)
-				return false;
+			return address.equals(route.address)
+					&& !(applicationGuid != null ? !applicationGuid.equals(route.applicationGuid) : route.applicationGuid != null)
+					&& !(privateInstanceId != null ? !privateInstanceId.equals(route.privateInstanceId) : route.privateInstanceId != null);
 
-			return true;
 		}
 
 		@Override

@@ -23,11 +23,18 @@ import java.util.UUID;
  */
 public class RouteUnregisterEvent extends AbstractRouteEvent {
 
-	public static RouteUnregisterEvent fromRouteDetails(Object source, RouteDetails route) {
-		return new RouteUnregisterEvent(source, route.getHost(), route.getAddress(), route.getApplicationGuid(), route.getApplicationIndex(), route.getPrivateInstanceId());
+	private final boolean last;
+
+	public static RouteUnregisterEvent fromRouteDetails(Object source, RouteDetails route, boolean last) {
+		return new RouteUnregisterEvent(source, route.getHost(), route.getAddress(), route.getApplicationGuid(), route.getApplicationIndex(), route.getPrivateInstanceId(), last);
 	}
 
-	public RouteUnregisterEvent(Object source, String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId) {
+	public RouteUnregisterEvent(Object source, String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId, boolean last) {
 		super(source, host, address, applicationGuid, applicationIndex, privateInstanceId);
+		this.last = last;
+	}
+
+	public boolean isLast() {
+		return last;
 	}
 }

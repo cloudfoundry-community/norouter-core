@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -121,6 +122,7 @@ public class RoutingTableTest {
 		assertTrue(routingTable.unregisterRoute(HOST, ADDRESS));
 		final RouteUnregisterEvent routeUnregisterEvent = (RouteUnregisterEvent) eventPublisher.poll();
 		assertDefaultRoute(routeUnregisterEvent);
+		assertTrue(routeUnregisterEvent.isLast());
 	}
 
 	@Test
@@ -201,6 +203,26 @@ public class RoutingTableTest {
 		available[0] = true;
 		assertEquals(1, routingTable.cleanupStaleRoutes());
 
+	}
+
+	@Test
+	public void lastFlagGetsSetWhenFinalHostIsUnregistered() throws Exception {
+		routingTable = new RoutingTable(eventPublisher, Duration.ofMinutes(1), () -> true);
+
+		final String host = "foo.bar.com";
+		final InetSocketAddress address1 = InetSocketAddress.createUnresolved("1.0.0.0", 1);
+		final InetSocketAddress address2 = InetSocketAddress.createUnresolved("1.0.0.0", 2);
+
+		routingTable.insertRoute(host, address1, null, null, null);
+		routingTable.insertRoute(host, address2, null, null, null);
+
+		routingTable.unregisterRoute(host, address1);
+		routingTable.unregisterRoute(host, address2);
+
+		final RouteUnregisterEvent unregister1 = (RouteUnregisterEvent) eventPublisher.poll();
+		assertFalse(unregister1.isLast());
+		final RouteUnregisterEvent unregister2 = (RouteUnregisterEvent) eventPublisher.poll();
+		assertTrue(unregister2.isLast());
 	}
 
 	private void registerDefaultRoute() {
