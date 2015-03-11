@@ -21,8 +21,6 @@ import cf.nats.DefaultCfNats;
 import cf.spring.NettyEventLoopGroupFactoryBean;
 import cf.spring.PidFileFactory;
 import cloudfoundry.norouter.nats.NatsRouteProvider;
-import cloudfoundry.norouter.routingtable.LoggingRouteRegisterEventListener;
-import cloudfoundry.norouter.routingtable.LoggingRouteUnregisterEventListener;
 import cloudfoundry.norouter.routingtable.RoutingTable;
 import io.netty.channel.EventLoopGroup;
 import nats.client.Nats;
@@ -45,8 +43,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -57,10 +58,11 @@ import java.util.Queue;
 /**
  * @author Mike Heath
  */
+@ComponentScan("cloudfoundry.norouter.config")
 @Configuration
 @EnableAutoConfiguration
-@ComponentScan("cloudfoundry.norouter.config")
 @EnableConfigurationProperties(NatsProperties.class)
+@EnableScheduling
 public class Main {
 
 	@Autowired
@@ -70,22 +72,19 @@ public class Main {
 	private NatsProperties natsProperties;
 
 	@Bean
-	LoggingRouteRegisterEventListener logRouteRegisterEvents() {
-		return new LoggingRouteRegisterEventListener();
+	TaskScheduler schedulingScheduler() {
+		return new ThreadPoolTaskScheduler();
 	}
 
 	@Bean
-	LoggingRouteUnregisterEventListener logRouteUnregisterEvents() {
-		return new LoggingRouteUnregisterEventListener();
-	}
-
-	@Bean
+	@Order(Integer.MAX_VALUE)
 	@Qualifier("worker")
 	NettyEventLoopGroupFactoryBean workerGroup() {
 		return new NettyEventLoopGroupFactoryBean();
 	}
 
-	@Bean @Order(Integer.MIN_VALUE)
+	@Bean
+	@Order(Integer.MIN_VALUE)
 	ThreadPoolTaskExecutor natsExecutor() {
 		final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		executor.setMaxPoolSize(1);
