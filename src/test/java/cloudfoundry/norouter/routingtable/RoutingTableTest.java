@@ -15,6 +15,7 @@
  */
 package cloudfoundry.norouter.routingtable;
 
+import org.springframework.context.ApplicationEvent;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -223,6 +224,20 @@ public class RoutingTableTest {
 		assertFalse(unregister1.isLast());
 		final RouteUnregisterEvent unregister2 = (RouteUnregisterEvent) eventPublisher.poll();
 		assertTrue(unregister2.isLast());
+	}
+
+	@Test
+	public void forcesLowerCase() {
+		final InetSocketAddress address = InetSocketAddress.createUnresolved("1.0.0.0", 1);
+		routingTable.registerRoute("TEST", address, null, null, null);
+		final Set<RouteDetails> routes = routingTable.getRoutes("TeSt");
+		assertEquals(routes.size(), 1);
+		assertEquals(routes.stream().findFirst().get().getHost(), "test");
+		assertTrue(routingTable.unregisterRoute("tESt", address));
+		final RouteRegisterEvent routeRegisterEvent = (RouteRegisterEvent) eventPublisher.poll();
+		assertEquals(routeRegisterEvent.getHost(), "test");
+		final RouteUnregisterEvent routeUnregisterEvent = (RouteUnregisterEvent) eventPublisher.poll();
+		assertEquals(routeUnregisterEvent.getHost(), "test");
 	}
 
 	private void registerDefaultRoute() {

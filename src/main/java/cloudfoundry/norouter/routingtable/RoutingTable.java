@@ -112,6 +112,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	}
 
 	private Route addRoute(String host, InetSocketAddress address, UUID applicationGuid, Integer applicationIndex, String privateInstanceId, boolean publishChange) {
+		host = host.toLowerCase();
 		final Route newRoute = new Route(address, applicationGuid, applicationIndex, host, privateInstanceId);
 		synchronized (lock) {
 			Map<SocketAddress, Route> routes = routeTable.get(host);
@@ -133,6 +134,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 
 	@Override
 	public boolean unregisterRoute(String host, InetSocketAddress address) {
+		host = host.toLowerCase();
 		synchronized (lock) {
 			Map<SocketAddress, Route> routes = routeTable.get(host);
 			if (routes == null) {
@@ -160,6 +162,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	}
 
 	public Set<RouteDetails> getRoutes(String host) {
+		host = host.toLowerCase();
 		final HashSet<RouteDetails> routes = new HashSet<>();
 		synchronized (lock) {
 			final Map<SocketAddress, Route> routeMap = routeTable.get(host);
