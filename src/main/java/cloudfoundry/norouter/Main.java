@@ -43,11 +43,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -70,11 +68,6 @@ public class Main {
 
 	@Autowired
 	private NatsProperties natsProperties;
-
-	@Bean
-	TaskScheduler schedulingScheduler() {
-		return new ThreadPoolTaskScheduler();
-	}
 
 	@Bean
 	@Order(Integer.MAX_VALUE)
