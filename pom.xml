@@ -57,6 +57,13 @@
 			<version>${jackson.version}</version>
 		</dependency>
 
+		// TODO Move this dependency to norouter-f5
+		<dependency>
+			<groupId>org.antlr</groupId>
+			<artifactId>ST4</artifactId>
+			<version>4.0.8</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
