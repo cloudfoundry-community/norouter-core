@@ -57,7 +57,7 @@
 			<version>${jackson.version}</version>
 		</dependency>
 
-		// TODO Move this dependency to norouter-f5
+		<!-- TODO Move this dependency to norouter-f5 -->
 		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>ST4</artifactId>
