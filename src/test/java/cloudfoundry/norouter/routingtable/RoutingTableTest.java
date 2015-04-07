@@ -15,7 +15,6 @@
  */
 package cloudfoundry.norouter.routingtable;
 
-import org.springframework.context.ApplicationEvent;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -238,6 +237,25 @@ public class RoutingTableTest {
 		assertEquals(routeRegisterEvent.getHost(), "test");
 		final RouteUnregisterEvent routeUnregisterEvent = (RouteUnregisterEvent) eventPublisher.poll();
 		assertEquals(routeUnregisterEvent.getHost(), "test");
+	}
+
+	@Test
+	public void getRouteByAddress() {
+		routingTable = new RoutingTable(eventPublisher, Duration.ofMinutes(1), () -> true);
+
+		final String host = "foo.bar.com";
+		final InetSocketAddress address1 = InetSocketAddress.createUnresolved("1.0.0.0", 1);
+		final InetSocketAddress address2 = InetSocketAddress.createUnresolved("1.0.0.1", 2);
+
+		final String host2 = "one.two.three.com";
+		final InetSocketAddress address3 = InetSocketAddress.createUnresolved("1.0.0.2", 80);
+		routingTable.insertRoute(host, address1, null, null, null);
+		routingTable.insertRoute(host, address2, null, null, null);
+		routingTable.insertRoute(host2, address3, null, null, null);
+
+		assertEquals(host, routingTable.getRouteByAddress(address1).getHost());
+		assertEquals(host, routingTable.getRouteByAddress(address2).getHost());
+		assertEquals(host2, routingTable.getRouteByAddress(address3).getHost());
 	}
 
 	private void registerDefaultRoute() {

@@ -29,4 +29,6 @@ public interface RouteRegistrar {
 
 	boolean unregisterRoute(String host, InetSocketAddress address);
 
+	RouteDetails getRouteByAddress(InetSocketAddress address);
+
 }

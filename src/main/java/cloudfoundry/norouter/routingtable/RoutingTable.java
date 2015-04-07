@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +43,9 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	private final ScheduledFuture<?> staleRouteScheduleFuture;
 	private final Duration staleRouteTimeout;
 
-	// Access to #routeTable must be synchronized on #lock.
-	private final Map<String, Map<SocketAddress, Route>> routeTable = new HashMap<>();
+	// Access to #hostTable must be synchronized on #lock.
+	private final Map<String, Map<SocketAddress, Route>> hostTable = new HashMap<>();
+	private final Map<InetSocketAddress, Route> addressTable = new ConcurrentHashMap<>();
 	private final Object lock = new Object();
 	private final RouteProvider routeProvider;
 
@@ -79,7 +81,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 		final Instant now = Instant.now();
 		int count = 0;
 		synchronized (lock) {
-			final Iterator<Map.Entry<String, Map<SocketAddress, Route>>> routeTableIterator = routeTable.entrySet().iterator();
+			final Iterator<Map.Entry<String, Map<SocketAddress, Route>>> routeTableIterator = hostTable.entrySet().iterator();
 			while (routeTableIterator.hasNext()) {
 				final Map.Entry<String, Map<SocketAddress, Route>> routeTableEntry = routeTableIterator.next();
 				final Map<SocketAddress, Route> routeMap = routeTableEntry.getValue();
@@ -115,14 +117,15 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 		host = host.toLowerCase();
 		final Route newRoute = new Route(address, applicationGuid, applicationIndex, host, privateInstanceId);
 		synchronized (lock) {
-			Map<SocketAddress, Route> routes = routeTable.get(host);
+			Map<SocketAddress, Route> routes = hostTable.get(host);
 			if (routes == null) {
 				routes = new HashMap<>();
-				routeTable.put(host, routes);
+				hostTable.put(host, routes);
 			}
 			final Route route = routes.get(address);
 			if (route == null || !newRoute.equals(route)) {
 				routes.put(address, newRoute);
+				addressTable.put(address, newRoute);
 				if (publishChange) {
 					publishRouteRegister(newRoute);
 				}
@@ -135,8 +138,9 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 	@Override
 	public boolean unregisterRoute(String host, InetSocketAddress address) {
 		host = host.toLowerCase();
+		addressTable.remove(address);
 		synchronized (lock) {
-			Map<SocketAddress, Route> routes = routeTable.get(host);
+			Map<SocketAddress, Route> routes = hostTable.get(host);
 			if (routes == null) {
 				return false;
 			}
@@ -144,13 +148,18 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 			final boolean removed = route != null;
 			final boolean last = routes.size() == 0;
 			if (last) {
-				routeTable.remove(host);
+				hostTable.remove(host);
 			}
 			if (removed) {
 				publishRouteUnregister(route, last);
 			}
 			return removed;
 		}
+	}
+
+	@Override
+	public RouteDetails getRouteByAddress(InetSocketAddress address) {
+		return addressTable.get(address);
 	}
 
 	private void publishRouteRegister(Route route) {
@@ -165,7 +174,7 @@ public class RoutingTable implements AutoCloseable, RouteRegistrar {
 		host = host.toLowerCase();
 		final HashSet<RouteDetails> routes = new HashSet<>();
 		synchronized (lock) {
-			final Map<SocketAddress, Route> routeMap = routeTable.get(host);
+			final Map<SocketAddress, Route> routeMap = hostTable.get(host);
 			if (routeMap != null) {
 				routeMap.forEach((k, v) -> routes.add(v));
 			}
