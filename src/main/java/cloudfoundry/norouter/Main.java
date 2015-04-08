@@ -13,9 +13,10 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-
 package cloudfoundry.norouter;
 
+import cf.dropsonde.MetronClient;
+import cf.dropsonde.MetronClientBuilder;
 import cf.nats.CfNats;
 import cf.nats.DefaultCfNats;
 import cf.spring.NettyEventLoopGroupFactoryBean;
@@ -48,6 +49,7 @@ import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.Map;
@@ -59,7 +61,7 @@ import java.util.Queue;
 @ComponentScan("cloudfoundry.norouter.config")
 @Configuration
 @EnableAutoConfiguration
-@EnableConfigurationProperties(NatsProperties.class)
+@EnableConfigurationProperties({NatsProperties.class, MetronProperties.class})
 @EnableScheduling
 public class Main {
 
@@ -68,6 +70,15 @@ public class Main {
 
 	@Autowired
 	private NatsProperties natsProperties;
+
+	@Autowired MetronProperties metronProperties;
+
+	@Bean
+	@Order(Integer.MAX_VALUE)
+	@Qualifier("boss")
+	NettyEventLoopGroupFactoryBean bossGroup() {
+		return new NettyEventLoopGroupFactoryBean(1);
+	}
 
 	@Bean
 	@Order(Integer.MAX_VALUE)
@@ -154,6 +165,14 @@ public class Main {
 				staleRouteEvictionScheduledExecutor().getObject(),
 				Duration.ofMinutes(5), // TODO Make the stale route duration configurable
 				compositeRouteProvider());
+	}
+
+	@Bean
+	MetronClient metronClient() {
+		return MetronClientBuilder
+				.create("norouter")
+				.metronAgent(new InetSocketAddress(metronProperties.getAddress(), metronProperties.getPort()))
+				.build();
 	}
 
 	static class QueuedEventPublisher implements ApplicationEventPublisher, ApplicationListener<ContextRefreshedEvent>, Ordered {

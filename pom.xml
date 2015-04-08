@@ -26,6 +26,10 @@
 		<version>0.1-SNAPSHOT</version>
 	</parent>
 
+	<properties>
+		<snotel.version>0.1-SNAPSHOT</snotel.version>
+	</properties>
+
 	<artifactId>norouter-core</artifactId>
 	<version>0.1-SNAPSHOT</version>
 
@@ -43,6 +47,12 @@
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.cloudfoundry-community</groupId>
+			<artifactId>snotel</artifactId>
+			<version>0.1-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
