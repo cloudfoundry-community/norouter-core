@@ -44,9 +44,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -61,7 +63,7 @@ import java.util.Queue;
 @ComponentScan("cloudfoundry.norouter.config")
 @Configuration
 @EnableAutoConfiguration
-@EnableConfigurationProperties({NatsProperties.class, MetronProperties.class})
+@EnableConfigurationProperties({NatsProperties.class, MetronProperties.class, NorouterProperties.class})
 @EnableScheduling
 public class Main {
 
@@ -85,6 +87,11 @@ public class Main {
 	@Qualifier("worker")
 	NettyEventLoopGroupFactoryBean workerGroup() {
 		return new NettyEventLoopGroupFactoryBean();
+	}
+
+	@Bean
+	TaskScheduler taskScheduler() {
+		return new ThreadPoolTaskScheduler();
 	}
 
 	@Bean
