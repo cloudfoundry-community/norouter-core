@@ -27,7 +27,7 @@ import java.nio.channels.DatagramChannel;
 @ConfigurationProperties(prefix = "norouter")
 public class NorouterProperties {
 
-	private String hostAddress = detectHostAddress();
+	private String hostAddress;
 
 	private static String detectHostAddress() {
 		try {
@@ -39,6 +39,9 @@ public class NorouterProperties {
 	}
 
 	public String getHostAddress() {
+		if (hostAddress == null) {
+			hostAddress = detectHostAddress();
+		}
 		return hostAddress;
 	}
 
