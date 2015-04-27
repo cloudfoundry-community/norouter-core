@@ -13,14 +13,13 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package cloudfoundry.norouter;
+package cloudfoundry.norouter.config;
 
-import cf.dropsonde.MetronClient;
-import cf.dropsonde.MetronClientBuilder;
 import cf.nats.CfNats;
 import cf.nats.DefaultCfNats;
 import cf.spring.NettyEventLoopGroupFactoryBean;
 import cf.spring.PidFileFactory;
+import cloudfoundry.norouter.RouteProvider;
 import cloudfoundry.norouter.nats.NatsRouteProvider;
 import cloudfoundry.norouter.routingtable.RoutingTable;
 import io.netty.channel.EventLoopGroup;
@@ -31,27 +30,20 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.Map;
@@ -60,27 +52,14 @@ import java.util.Queue;
 /**
  * @author Mike Heath
  */
-@ComponentScan("cloudfoundry.norouter.config")
 @Configuration
-@EnableAutoConfiguration
-@EnableConfigurationProperties({NatsProperties.class, MetronProperties.class, NorouterProperties.class})
-@EnableScheduling
-public class Main {
+@EnableConfigurationProperties({NatsProperties.class})
+public class RoutingTableConfig {
+	@Autowired
+	ListableBeanFactory beanFactory;
 
 	@Autowired
-	private ListableBeanFactory beanFactory;
-
-	@Autowired
-	private NatsProperties natsProperties;
-
-	@Autowired MetronProperties metronProperties;
-
-	@Bean
-	@Order(Integer.MAX_VALUE)
-	@Qualifier("boss")
-	NettyEventLoopGroupFactoryBean bossGroup() {
-		return new NettyEventLoopGroupFactoryBean(1);
-	}
+	NatsProperties natsProperties;
 
 	@Bean
 	@Order(Integer.MAX_VALUE)
@@ -90,22 +69,11 @@ public class Main {
 	}
 
 	@Bean
-	TaskScheduler taskScheduler() {
-		return new ThreadPoolTaskScheduler();
-	}
-
-	@Bean
 	@Order(Integer.MIN_VALUE)
 	ThreadPoolTaskExecutor natsExecutor() {
 		final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		executor.setMaxPoolSize(1);
 		return executor;
-	}
-
-	@Bean
-	@ConditionalOnProperty("pidfile")
-	PidFileFactory pidFile(@Value("${pidfile}") String pidfile) throws IOException {
-		return new PidFileFactory(pidfile);
 	}
 
 	@Bean
@@ -174,14 +142,6 @@ public class Main {
 				compositeRouteProvider());
 	}
 
-	@Bean
-	MetronClient metronClient() {
-		return MetronClientBuilder
-				.create("norouter")
-				.metronAgent(new InetSocketAddress(metronProperties.getAddress(), metronProperties.getPort()))
-				.build();
-	}
-
 	static class QueuedEventPublisher implements ApplicationEventPublisher, ApplicationListener<ContextRefreshedEvent>, Ordered {
 
 		private final ApplicationEventPublisher publisher;
@@ -214,9 +174,4 @@ public class Main {
 			return Integer.MAX_VALUE;
 		}
 	}
-
-	public static void main(String[] args) {
-		new SpringApplicationBuilder().sources(Main.class).build().run(args);
-	}
-
 }

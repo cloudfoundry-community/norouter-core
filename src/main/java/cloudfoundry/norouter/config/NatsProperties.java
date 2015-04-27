@@ -13,33 +13,27 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package cloudfoundry.norouter;
+
+package cloudfoundry.norouter.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Mike Heath
  */
-@ConfigurationProperties(prefix = "metron")
-public class MetronProperties {
+@ConfigurationProperties(prefix = "nats")
+public class NatsProperties {
 
-	private String address = "127.0.0.1";
-	private int port = 3457;
+	private List<String> machines = new ArrayList<>();
 
-	public String getAddress() {
-		return address;
+	public List<String> getMachines() {
+		return machines;
 	}
 
-	public void setAddress(String address) {
-		this.address = address;
+	public void setMachines(List<String> machines) {
+		this.machines = machines;
 	}
-
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(int port) {
-		this.port = port;
-	}
-
 }

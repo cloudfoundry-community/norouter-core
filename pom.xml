@@ -83,14 +83,5 @@
 
 	<build>
 		<finalName>norouter-core</finalName>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<layout>ZIP</layout>
-				</configuration>
-			</plugin>
-		</plugins>
 	</build>
 </project>
