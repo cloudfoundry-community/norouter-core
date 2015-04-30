@@ -52,7 +52,7 @@
 		<dependency>
 			<groupId>com.github.cloudfoundry-community</groupId>
 			<artifactId>snotel</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<version>0.1</version>
 		</dependency>
 
 		<dependency>
